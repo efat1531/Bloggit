@@ -1,4 +1,5 @@
 ﻿using Bloggit.Data.IServices;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bloggit.Data.Services
 {
@@ -14,7 +15,7 @@ namespace Bloggit.Data.Services
         {
             try
             {
-                return await Task.FromResult(_context.Posts.ToList());
+                return (IEnumerable<Post>)await Task.FromResult(_context.Posts.ToListAsync());
             }
             catch (Exception ex)
             {
@@ -87,7 +88,7 @@ namespace Bloggit.Data.Services
         }
 
         // <summary>
-        // This method to delete a post.
+        // This method retrives a post by ID.
         // </summary>
         public async Task<Post?> GetPostById(int postId)
         {

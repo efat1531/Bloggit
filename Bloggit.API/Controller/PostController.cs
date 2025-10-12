@@ -41,7 +41,7 @@ namespace Bloggit.API.Controller
                 return StatusCode(500, "Failed to create post");
 
             var postDto = _mapper.Map<PostDto>(post);
-            return CreatedAtAction(nameof(Get), new { id = post.Id }, postDto);
+            return CreatedAtAction(nameof(GetPostById), new { id = post.Id }, postDto);
         }
 
         /// <summary>
@@ -85,7 +85,7 @@ namespace Bloggit.API.Controller
         }
 
         /// <summary>
-        /// Delete a post
+        /// Get a post by ID
         /// </summary>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetPostById(int id)

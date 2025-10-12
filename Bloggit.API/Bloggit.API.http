@@ -10,5 +10,5 @@ Content-Type: application/json
 {
     "title": "My Second Post",
     "content": "This is the content of the post.",
-    "author": 2
+    "AuthorId": 2
 }
