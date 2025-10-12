@@ -1,6 +1,14 @@
-@Bloggit.API_HostAddress = http://localhost:5032
+@Bloggit.API_HostAddress = https://localhost:7291
 
-GET {{Bloggit.API_HostAddress}}/weatherforecast/
+GET {{Bloggit.API_HostAddress}}/api/v1/Post
 Accept: application/json
 
 ###
+
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Content-Type: application/json
+{
+    "title": "My Second Post",
+    "content": "This is the content of the post.",
+    "author": 2
+}

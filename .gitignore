@@ -225,6 +225,14 @@ FodyWeavers.xsd
 # User secrets - these are stored outside the project but just in case
 secrets.json
 
+# Sensitive configuration files - exclude but keep templates
+**/appsettings.Development.json
+**/appsettings.Production.json
+**/appsettings.Staging.json
+**/appsettings.Local.json
+!**/appsettings.json
+!**/appsettings.*.json.template
+
 # Environment files (if you use them)
 .env
 .env.local
