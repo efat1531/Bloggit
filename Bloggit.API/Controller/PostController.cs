@@ -164,14 +164,14 @@ namespace Bloggit.API.Controller
             }
         }
         #region Private Functions
-        private static string CreateNotFoundMessage(int id = -1)
+        private static string CreateNotFoundMessage(int? id = null)
         {
             string msg = "The resource you are looking for has been removed or not found in the server.";
-            if(id == -1)
+            if (id == null)
             {
                 return msg;
             }
-            msg = "The post with id = " + id + " has been removed or not found in the server";
+            msg = $"The post with id = {id} has been removed or not found in the server";
             return msg;
         }
         #endregion

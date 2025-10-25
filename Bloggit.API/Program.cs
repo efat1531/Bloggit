@@ -49,6 +49,8 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseRequestLogging();
+
 app.UseHttpsRedirection();
 
 // Map Controllers
@@ -57,11 +59,10 @@ app.MapControllers();
 logger.LogInformation("✅ Application configured successfully");
 logger.LogInformation("🌐 Starting web server...");
 
-app.UseRequestLogging();
-
 app.Run();
 
 logger.LogInformation("🛑 Application is shutting down...");
+
 
 // Method to test database connection
 static void TestDatabaseConnection(string? connectionString, ILogger logger)

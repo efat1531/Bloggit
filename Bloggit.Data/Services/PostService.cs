@@ -16,8 +16,7 @@ namespace Bloggit.Data.Services
         {
             try
             {
-                var posts = await _context.Posts.ToListAsync();
-                return posts;
+                return await _context.Posts.ToListAsync();
             }
             catch (Exception ex)
             {
@@ -40,10 +39,9 @@ namespace Bloggit.Data.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Error creating post: {Message}", ex.Message);
-                throw; 
+                return false;
             }
         }
-
         // <summary>
         // This method to update an existing post.
         // </summary>
@@ -58,11 +56,9 @@ namespace Bloggit.Data.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Error updating post with ID {PostId}: {Message}", updatedPost.Id, ex.Message);
-                throw; 
+                return false;
             }
         }
-
-        // <summary>
         // This method to delete a post.
         // </summary>
         public async Task<bool> DeletePost(int postId)
@@ -78,15 +74,13 @@ namespace Bloggit.Data.Services
                 }
                 return false;
             }
+
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Error deleting post with ID {PostId}: {Message}", postId, ex.Message);
-                throw; 
+                return false;
             }
         }
-
-        // <summary>
-        // This method retrives a post by ID.
         // </summary>
         public async Task<Post?> GetPostById(int postId)
         {
