@@ -1,13 +1,14 @@
 ﻿using Bloggit.Data.IServices;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Bloggit.Data.Services
 {
-    public class PostService(ApplicationDbContext applicationDbContext) : IPostService
+    public class PostService(ApplicationDbContext applicationDbContext, ILogger<PostService> logger) : IPostService
     {
         private readonly ApplicationDbContext _context = applicationDbContext;
+        private readonly ILogger<PostService> _logger = logger;
 
-        // Implement methods defined in IPostService here
         // <summary>
         // This method to get all the post for the api.
         // </summary>
@@ -15,13 +16,13 @@ namespace Bloggit.Data.Services
         {
             try
             {
-                return (IEnumerable<Post>)await Task.FromResult(_context.Posts.ToListAsync());
+                var posts = await _context.Posts.ToListAsync();
+                return posts;
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error retrieving posts");
-                Console.WriteLine("Error Message: " + ex.Message);
-                return Enumerable.Empty<Post>();
+                _logger.LogError(ex, "❌ Error retrieving posts: {Message}", ex.Message);
+                throw; 
             }
         }
 
@@ -38,9 +39,8 @@ namespace Bloggit.Data.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error Creating post");
-                Console.WriteLine("Error Message: " + ex.Message);
-                return false;
+                _logger.LogError(ex, "❌ Error creating post: {Message}", ex.Message);
+                throw; 
             }
         }
 
@@ -57,9 +57,8 @@ namespace Bloggit.Data.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error Updating post");
-                Console.WriteLine("Error Message: " + ex.Message);
-                return false;
+                _logger.LogError(ex, "❌ Error updating post with ID {PostId}: {Message}", updatedPost.Id, ex.Message);
+                throw; 
             }
         }
 
@@ -81,9 +80,8 @@ namespace Bloggit.Data.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error Deleting post");
-                Console.WriteLine("Error Message: " + ex.Message);
-                return false;
+                _logger.LogError(ex, "❌ Error deleting post with ID {PostId}: {Message}", postId, ex.Message);
+                throw; 
             }
         }
 
@@ -99,9 +97,8 @@ namespace Bloggit.Data.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error Retrieving post by Id");
-                Console.WriteLine("Error Message: " + ex.Message);
-                return null;
+                _logger.LogError(ex, "❌ Error retrieving post with ID {PostId}: {Message}", postId, ex.Message);
+                throw; 
             }
         }
     }
