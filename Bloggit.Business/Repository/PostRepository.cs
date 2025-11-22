@@ -1,5 +1,6 @@
 ﻿using Bloggit.Business.IRepository;
 using Bloggit.Data.IServices;
+using Bloggit.Data.Models;
 
 namespace Bloggit.Business.Repository
 {

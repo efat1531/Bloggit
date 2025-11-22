@@ -1,4 +1,5 @@
 ﻿using Bloggit.Data.IServices;
+using Bloggit.Data.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

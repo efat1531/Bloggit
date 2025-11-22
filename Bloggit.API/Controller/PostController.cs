@@ -2,7 +2,10 @@
 using AutoMapper;
 using Bloggit.API.DTOs;
 using Bloggit.Business.IRepository;
+using Bloggit.Data.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Bloggit.API.Controller
 {
@@ -38,9 +41,10 @@ namespace Bloggit.API.Controller
         /// Create a new post
         /// </summary>
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> Create([FromBody] CreatePostDto createPostDto)
         {
-            
+
             if (!ModelState.IsValid)
             {
                 _logger.LogWarning("Invalid data for creating post");
@@ -50,6 +54,11 @@ namespace Bloggit.API.Controller
             try
             {
                 var post = _mapper.Map<Post>(createPostDto);
+
+                // Set the AuthorId from the authenticated user's claims
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                post.AuthorId = userId;
+
                 var success = await _postRepository.CreatePostAsync(post);
 
                 if (!success)
@@ -59,6 +68,7 @@ namespace Bloggit.API.Controller
                 }
 
                 var postDto = _mapper.Map<PostDto>(post);
+                _logger.LogInformation("Post created by user {UserId} with title: {Title}", userId, createPostDto.Title);
                 return CreatedAtAction(nameof(GetPostById), new { id = post.Id }, postDto);
             }
             catch (Exception ex)
@@ -72,9 +82,10 @@ namespace Bloggit.API.Controller
         /// Update an existing post
         /// </summary>
         [HttpPut("{id}")]
+        [Authorize]
         public async Task<IActionResult> Update(int id, [FromBody] UpdatePostDto updatePostDto)
         {
-            
+
             if (!ModelState.IsValid)
             {
                 _logger.LogWarning("Invalid model state for updating post ID: {PostId}", id);
@@ -92,6 +103,14 @@ namespace Bloggit.API.Controller
                     return NotFound(CreateNotFoundMessage(id));
                 }
 
+                // Check if the current user is the author of the post
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (existingPost.AuthorId != userId)
+                {
+                    _logger.LogWarning("User {UserId} attempted to update post {PostId} owned by {AuthorId}", userId, id, existingPost.AuthorId);
+                    return Forbid();
+                }
+
                 // Map the update DTO to the existing post
                 _mapper.Map(updatePostDto, existingPost);
 
@@ -103,6 +122,7 @@ namespace Bloggit.API.Controller
                     return StatusCode(500, "Failed to update post");
                 }
 
+                _logger.LogInformation("Post {PostId} updated by user {UserId}", id, userId);
                 return NoContent();
             }
             catch (Exception ex)
@@ -116,20 +136,38 @@ namespace Bloggit.API.Controller
         /// Delete a post
         /// </summary>
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> Delete(int id)
         {
-            
+
             try
             {
-                var success = await _postRepository.DeletePostAsync(id);
+                // Get the post first to check ownership
+                var existingPost = await _postRepository.GetPostByIdAsync(id);
 
-                if (!success)
+                if (existingPost == null)
                 {
-
                     _logger.LogWarning("Post with ID: {PostId} not found for deletion", id);
                     return NotFound(CreateNotFoundMessage(id));
                 }
 
+                // Check if the current user is the author of the post
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (existingPost.AuthorId != userId)
+                {
+                    _logger.LogWarning("User {UserId} attempted to delete post {PostId} owned by {AuthorId}", userId, id, existingPost.AuthorId);
+                    return Forbid();
+                }
+
+                var success = await _postRepository.DeletePostAsync(id);
+
+                if (!success)
+                {
+                    _logger.LogError("Failed to delete post with ID: {PostId}", id);
+                    return StatusCode(500, "Failed to delete post");
+                }
+
+                _logger.LogInformation("Post {PostId} deleted by user {UserId}", id, userId);
                 return NoContent();
             }
             catch (Exception ex)

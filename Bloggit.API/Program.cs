@@ -33,7 +33,7 @@ startupLogger.LogInformation("Environment: {Environment}", builder.Environment.E
 TestDatabaseConnection(connectionString, startupLogger);
 
 // Configure all services using DependencyInjection
-builder.Services.AddAllServices(connectionString!);
+builder.Services.AddAllServices(connectionString!, builder.Configuration);
 builder.Services.AddApiServices();
 
 var app = builder.Build();
@@ -53,8 +53,28 @@ app.UseRequestLogging();
 
 app.UseHttpsRedirection();
 
+// Add Authentication & Authorization middleware
+app.UseAuthentication();
+app.UseAuthorization();
+
 // Map Controllers
 app.MapControllers();
+
+// Seed default roles
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.RoleManager<Microsoft.AspNetCore.Identity.IdentityRole>>();
+
+    string[] roles = ["User", "Admin"];
+    foreach (var role in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            await roleManager.CreateAsync(new Microsoft.AspNetCore.Identity.IdentityRole(role));
+            logger.LogInformation("Created default '{Role}' role", role);
+        }
+    }
+}
 
 logger.LogInformation("✅ Application configured successfully");
 logger.LogInformation("🌐 Starting web server...");

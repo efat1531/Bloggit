@@ -1,5 +1,6 @@
 using AutoMapper;
 using Bloggit.API.DTOs;
+using Bloggit.Data.Models;
 
 namespace Bloggit.API.Mappings
 {

@@ -10,6 +10,6 @@ namespace Bloggit.API.DTOs
         public string? Content { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
-        public int? AuthorId { get; set; }
+        public string? AuthorId { get; set; }
     }
 }
