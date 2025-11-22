@@ -9,10 +9,10 @@ namespace Bloggit.Business.IRepository
     public interface IPostRepository
     {
         public Task<IEnumerable<Post>> GetPostsAsync();
-        public Task<bool> CreatePost(Post newPost);
-        public Task<bool> UpdatePost(Post updatedPost);
-        public Task<bool> DeletePost(int postId);
-        
-        public Task<Post?> GetPostById(int postId);
+        public Task<bool> CreatePostAsync(Post newPost);
+        public Task<bool> UpdatePostAsync(Post updatedPost);
+        public Task<bool> DeletePostAsync(int postId);
+
+        public Task<Post?> GetPostByIdAsync(int postId);
     }
 }

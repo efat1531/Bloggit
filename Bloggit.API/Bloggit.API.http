@@ -1,14 +1,224 @@
 @Bloggit.API_HostAddress = https://localhost:7291
 
+# Variables for testing
+@postId = 1
+
+###############################################################################
+# Post Endpoints - CRUD Operations
+###############################################################################
+
+### GET All Posts
+# Retrieves all posts from the database
 GET {{Bloggit.API_HostAddress}}/api/v1/Post
 Accept: application/json
 
 ###
 
+### GET Post by ID
+# Retrieves a specific post by ID
+# Replace @postId variable or use a specific ID
+GET {{Bloggit.API_HostAddress}}/api/v1/Post/{{postId}}
+Accept: application/json
+
+###
+
+### GET Post by ID - Not Found Test
+# Test with non-existent ID to verify 404 response
+GET {{Bloggit.API_HostAddress}}/api/v1/Post/99999
+Accept: application/json
+
+###
+
+### POST Create New Post
+# Creates a new post
+# Required fields: title, content
+# Optional field: authorId
 POST {{Bloggit.API_HostAddress}}/api/v1/Post
 Content-Type: application/json
+
 {
-    "title": "My Second Post",
-    "content": "This is the content of the post.",
-    "AuthorId": 2
+    "title": "My First Blog Post",
+    "content": "This is the content of my first blog post. It contains valuable information.",
+    "authorId": 1
+}
+
+###
+
+### POST Create Post - Minimal Data
+# Creates a post with only required fields
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Content-Type: application/json
+
+{
+    "title": "Another Post",
+    "content": "Simple content here."
+}
+
+###
+
+### POST Create Post - Validation Test (Missing Title)
+# Should return 400 Bad Request due to missing required field
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Content-Type: application/json
+
+{
+    "content": "Content without a title"
+}
+
+###
+
+### POST Create Post - Validation Test (Missing Content)
+# Should return 400 Bad Request due to missing required field
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Content-Type: application/json
+
+{
+    "title": "Title without content"
+}
+
+###
+
+### POST Create Post - Empty Body Test
+# Should return 400 Bad Request
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Content-Type: application/json
+
+{}
+
+###
+
+### PUT Update Post
+# Updates an existing post
+# Replace @postId with actual post ID
+PUT {{Bloggit.API_HostAddress}}/api/v1/Post/{{postId}}
+Content-Type: application/json
+
+{
+    "title": "Updated Post Title",
+    "content": "This is the updated content of the post."
+}
+
+###
+
+### PUT Update Post - Partial Update (Title Only)
+# Updates only the title
+PUT {{Bloggit.API_HostAddress}}/api/v1/Post/{{postId}}
+Content-Type: application/json
+
+{
+    "title": "Updated Title Only"
+}
+
+###
+
+### PUT Update Post - Partial Update (Content Only)
+# Updates only the content
+PUT {{Bloggit.API_HostAddress}}/api/v1/Post/{{postId}}
+Content-Type: application/json
+
+{
+    "content": "Updated content only, title remains the same."
+}
+
+###
+
+### PUT Update Post - Not Found Test
+# Attempt to update non-existent post - should return 404
+PUT {{Bloggit.API_HostAddress}}/api/v1/Post/99999
+Content-Type: application/json
+
+{
+    "title": "This won't work",
+    "content": "Post doesn't exist"
+}
+
+###
+
+### DELETE Post
+# Deletes a post by ID
+# Replace @postId with actual post ID
+DELETE {{Bloggit.API_HostAddress}}/api/v1/Post/{{postId}}
+
+###
+
+### DELETE Post - Not Found Test
+# Attempt to delete non-existent post - should return 404
+DELETE {{Bloggit.API_HostAddress}}/api/v1/Post/99999
+
+###############################################################################
+# Test Scenarios - Complete Workflow
+###############################################################################
+
+### Scenario 1: Create -> Read -> Update -> Delete
+# Step 1: Create a new post
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Content-Type: application/json
+
+{
+    "title": "Test Workflow Post",
+    "content": "This post will be created, read, updated, and deleted.",
+    "authorId": 1
+}
+
+# Step 2: Copy the ID from response, then GET it
+# GET {{Bloggit.API_HostAddress}}/api/v1/Post/{id-from-step-1}
+
+# Step 3: Update it
+# PUT {{Bloggit.API_HostAddress}}/api/v1/Post/{id-from-step-1}
+# { "title": "Updated Title", "content": "Updated Content" }
+
+# Step 4: Delete it
+# DELETE {{Bloggit.API_HostAddress}}/api/v1/Post/{id-from-step-1}
+
+###############################################################################
+# Additional Test Cases
+###############################################################################
+
+### Test Long Content
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Content-Type: application/json
+
+{
+    "title": "Post with Very Long Content",
+    "content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+    "authorId": 1
+}
+
+###
+
+### Test Special Characters in Title and Content
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Content-Type: application/json
+
+{
+    "title": "Testing Special Characters: @#$%^&*()_+-={}[]|\\:;\"'<>,.?/",
+    "content": "Content with special chars: émojis 😀🎉, symbols ©®™, and quotes \"Hello\" 'World'",
+    "authorId": 1
+}
+
+###
+
+### Test Unicode and International Characters
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Content-Type: application/json
+
+{
+    "title": "Internationalization Test: 你好世界 مرحبا بالعالم Привет мир",
+    "content": "Testing various scripts: 日本語 한국어 Español Français Deutsch Português العربية हिन्दी",
+    "authorId": 1
+}
+
+###############################################################################
+# Performance Testing
+###############################################################################
+
+### Bulk Create - Create Multiple Posts
+# Run this multiple times to populate database for testing
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Content-Type: application/json
+
+{
+    "title": "Bulk Test Post {{$randomInt}}",
+    "content": "Generated at {{$datetime iso8601}}",
+    "authorId": {{$randomInt}}
 }

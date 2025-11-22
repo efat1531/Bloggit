@@ -50,8 +50,8 @@ namespace Bloggit.API.Controller
             try
             {
                 var post = _mapper.Map<Post>(createPostDto);
-                var success = await _postRepository.CreatePost(post);
-                
+                var success = await _postRepository.CreatePostAsync(post);
+
                 if (!success)
                 {
                     _logger.LogError("Failed to create post with title: {Title}", createPostDto.Title);
@@ -84,7 +84,7 @@ namespace Bloggit.API.Controller
             try
             {
                 // Get posts to find the one to update
-                var existingPost = await _postRepository.GetPostById(id);
+                var existingPost = await _postRepository.GetPostByIdAsync(id);
 
                 if (existingPost == null)
                 {
@@ -94,15 +94,15 @@ namespace Bloggit.API.Controller
 
                 // Map the update DTO to the existing post
                 _mapper.Map(updatePostDto, existingPost);
-                
-                var success = await _postRepository.UpdatePost(existingPost);
+
+                var success = await _postRepository.UpdatePostAsync(existingPost);
 
                 if (!success)
                 {
                     _logger.LogError("Failed to update post with ID: {PostId}", id);
                     return StatusCode(500, "Failed to update post");
                 }
-                
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -121,11 +121,11 @@ namespace Bloggit.API.Controller
             
             try
             {
-                var success = await _postRepository.DeletePost(id);
-                
+                var success = await _postRepository.DeletePostAsync(id);
+
                 if (!success)
                 {
-                    
+
                     _logger.LogWarning("Post with ID: {PostId} not found for deletion", id);
                     return NotFound(CreateNotFoundMessage(id));
                 }
@@ -147,13 +147,13 @@ namespace Bloggit.API.Controller
         {
             try
             {
-                var post = await _postRepository.GetPostById(id);
+                var post = await _postRepository.GetPostByIdAsync(id);
                 if(post == null)
                 {
                     _logger.LogWarning("Post with ID: {PostId} not found", id);
                     return NotFound(CreateNotFoundMessage(id));
                 }
-                
+
                 var postDTO = _mapper.Map<PostDto>(post);
                 return Ok(postDTO);
             }

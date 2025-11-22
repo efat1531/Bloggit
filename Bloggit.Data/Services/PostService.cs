@@ -28,7 +28,7 @@ namespace Bloggit.Data.Services
         // <summary>
         // This method to create a new post.
         // </summary>
-        public async Task<bool> CreatePost(Post newPost)
+        public async Task<bool> CreatePostAsync(Post newPost)
         {
             try
             {
@@ -45,7 +45,7 @@ namespace Bloggit.Data.Services
         // <summary>
         // This method to update an existing post.
         // </summary>
-        public async Task<bool> UpdatePost(Post updatedPost)
+        public async Task<bool> UpdatePostAsync(Post updatedPost)
         {
             try
             {
@@ -61,7 +61,7 @@ namespace Bloggit.Data.Services
         }
         // This method to delete a post.
         // </summary>
-        public async Task<bool> DeletePost(int postId)
+        public async Task<bool> DeletePostAsync(int postId)
         {
             try
             {
@@ -82,7 +82,7 @@ namespace Bloggit.Data.Services
             }
         }
         // </summary>
-        public async Task<Post?> GetPostById(int postId)
+        public async Task<Post?> GetPostByIdAsync(int postId)
         {
             try
             {
@@ -92,7 +92,7 @@ namespace Bloggit.Data.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Error retrieving post with ID {PostId}: {Message}", postId, ex.Message);
-                throw; 
+                throw;
             }
         }
     }
