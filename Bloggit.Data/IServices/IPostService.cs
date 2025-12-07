@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Bloggit.Data.Models;
 
 namespace Bloggit.Data.IServices
 {
@@ -10,11 +6,11 @@ namespace Bloggit.Data.IServices
     {
         // Define methods for managing blog posts here
         public Task<IEnumerable<Post>> GetPostsAsync();
-        public Task<bool> CreatePost(Post newPost);
-        public Task<bool> UpdatePost(Post updatedPost);
-        public Task<bool> DeletePost(int postId);
+        public Task<bool> CreatePostAsync(Post newPost);
+        public Task<bool> UpdatePostAsync(Post updatedPost);
+        public Task<bool> DeletePostAsync(int postId);
 
-        public Task<Post?> GetPostById(int postId);
+        public Task<Post?> GetPostByIdAsync(int postId);
 
 
     }

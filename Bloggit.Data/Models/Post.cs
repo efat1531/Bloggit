@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
+namespace Bloggit.Data.Models;
+
 public class Post
 {
     [Key]
@@ -10,5 +12,10 @@ public class Post
     public string? Content { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public int? AuthorId { get; set; }
+
+    // Foreign key to ApplicationUser
+    public string? AuthorId { get; set; }
+
+    // Navigation property
+    public ApplicationUser? Author { get; set; }
 }

@@ -1,5 +1,6 @@
 ﻿using Bloggit.Business.IRepository;
 using Bloggit.Data.IServices;
+using Bloggit.Data.Models;
 
 namespace Bloggit.Business.Repository
 {
@@ -12,24 +13,24 @@ namespace Bloggit.Business.Repository
             return await _postService.GetPostsAsync();
         }
 
-        public async Task<bool> CreatePost(Post newPost)
+        public async Task<bool> CreatePostAsync(Post newPost)
         {
-            return await _postService.CreatePost(newPost);
+            return await _postService.CreatePostAsync(newPost);
         }
 
-        public async Task<bool> UpdatePost(Post updatedPost)
+        public async Task<bool> UpdatePostAsync(Post updatedPost)
         {
-            return await _postService.UpdatePost(updatedPost);
+            return await _postService.UpdatePostAsync(updatedPost);
         }
 
-        public async Task<bool> DeletePost(int postId)
+        public async Task<bool> DeletePostAsync(int postId)
         {
-            return await _postService.DeletePost(postId);
+            return await _postService.DeletePostAsync(postId);
         }
 
-        public async Task<Post?> GetPostById(int postId)
+        public async Task<Post?> GetPostByIdAsync(int postId)
         {
-            return await _postService.GetPostById(postId);
+            return await _postService.GetPostByIdAsync(postId);
         }
     }
 }
