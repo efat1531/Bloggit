@@ -54,9 +54,10 @@ public class AuthControllerTests
         _mockSanitizationService = new Mock<IInputSanitizationService>();
 
         // Setup JWT settings
+        // NOTE: This is a test-only JWT secret for unit tests, not a production secret
         _jwtSettings = new JwtSettings
         {
-            Secret = "test-secret-key-for-jwt-token-generation-minimum-32-characters",
+            Secret = "test-only-secret-key-for-unit-tests-not-used-in-production-min-32-chars",
             Issuer = "TestIssuer",
             Audience = "TestAudience",
             ExpirationHours = 24
