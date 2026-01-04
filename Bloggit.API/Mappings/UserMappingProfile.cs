@@ -1,6 +1,6 @@
 using AutoMapper;
-using Bloggit.API.DTOs;
 using Bloggit.Data.Models;
+using Bloggit.Models.User;
 
 namespace Bloggit.API.Mappings;
 
@@ -8,13 +8,16 @@ public class UserMappingProfile : Profile
 {
     public UserMappingProfile()
     {
-        // ApplicationUser to UserDto
-        CreateMap<ApplicationUser, UserDto>()
-            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+        // Response mappings
+        CreateMap<ApplicationUser, UserResponse>()
             .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.UserName));
 
-        // RegisterDto to ApplicationUser
-        CreateMap<RegisterDto, ApplicationUser>()
+        CreateMap<ApplicationUser, UserWithRolesResponse>()
+            .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.UserName))
+            .ForMember(dest => dest.Roles, opt => opt.Ignore()); // Roles populated in controller
+
+        // Request mappings
+        CreateMap<RegisterRequest, ApplicationUser>()
             .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Username))
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.NormalizedUserName, opt => opt.Ignore())
@@ -32,8 +35,7 @@ public class UserMappingProfile : Profile
             .ForMember(dest => dest.Posts, opt => opt.Ignore())
             .ForMember(dest => dest.Comments, opt => opt.Ignore());
 
-        // UpdateUserProfileDto to ApplicationUser
-        CreateMap<UpdateUserProfileDto, ApplicationUser>()
+        CreateMap<UpdateUserProfileRequest, ApplicationUser>()
             .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
     }
 }

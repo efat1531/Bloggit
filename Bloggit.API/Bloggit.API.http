@@ -2,6 +2,143 @@
 
 # Variables for testing
 @postId = 1
+@userId =
+@accessToken =
+@refreshToken =
+
+###############################################################################
+# Authentication Endpoints
+###############################################################################
+
+### Register New User
+# Creates a new user account with "User" role
+POST {{Bloggit.API_HostAddress}}/api/v1/Auth/register
+Content-Type: application/json
+
+{
+    "username": "testuser",
+    "email": "testuser@example.com",
+    "password": "Test@123456",
+    "firstName": "Test",
+    "lastName": "User"
+}
+
+###
+
+### Register - Validation Test (Weak Password)
+# Should return 400 with password requirements error
+POST {{Bloggit.API_HostAddress}}/api/v1/Auth/register
+Content-Type: application/json
+
+{
+    "username": "weakuser",
+    "email": "weak@example.com",
+    "password": "123",
+    "firstName": "Weak",
+    "lastName": "Password"
+}
+
+###
+
+### Register - Duplicate Email Test
+# Should return 400 - Email already exists
+POST {{Bloggit.API_HostAddress}}/api/v1/Auth/register
+Content-Type: application/json
+
+{
+    "username": "anotheruser",
+    "email": "testuser@example.com",
+    "password": "Test@123456",
+    "firstName": "Another",
+    "lastName": "User"
+}
+
+###
+
+### Login
+# Returns JWT token in response body and HTTP-only cookie
+# Copy the token from response to @accessToken variable
+POST {{Bloggit.API_HostAddress}}/api/v1/Auth/login
+Content-Type: application/json
+
+{
+    "emailOrUsername": "testuser@example.com",
+    "password": "Test@123456"
+}
+
+###
+
+### Login with Username (instead of email)
+POST {{Bloggit.API_HostAddress}}/api/v1/Auth/login
+Content-Type: application/json
+
+{
+    "emailOrUsername": "testuser",
+    "password": "Test@123456"
+}
+
+###
+
+### Login - Invalid Credentials Test
+# Should return 401 Unauthorized
+POST {{Bloggit.API_HostAddress}}/api/v1/Auth/login
+Content-Type: application/json
+
+{
+    "emailOrUsername": "testuser@example.com",
+    "password": "WrongPassword"
+}
+
+###
+
+### Get Current User Profile
+# Requires authentication - Add token to @accessToken variable first
+GET {{Bloggit.API_HostAddress}}/api/v1/Auth/me
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+###
+
+### Update User Profile
+# Requires authentication
+PUT {{Bloggit.API_HostAddress}}/api/v1/Auth/profile
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "firstName": "Updated",
+    "lastName": "Name",
+    "bio": "This is my updated bio"
+}
+
+###
+
+### Change Password
+# Requires authentication
+POST {{Bloggit.API_HostAddress}}/api/v1/Auth/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "currentPassword": "Test@123456",
+    "newPassword": "NewTest@123456"
+}
+
+###
+
+### Refresh Token
+# Extends token expiration if expiring soon
+POST {{Bloggit.API_HostAddress}}/api/v1/Auth/refresh-token
+Authorization: Bearer {{accessToken}}
+
+###
+
+### Logout
+# Clears authentication cookie
+POST {{Bloggit.API_HostAddress}}/api/v1/Auth/logout
+Authorization: Bearer {{accessToken}}
+
+###
 
 ###############################################################################
 # Post Endpoints - CRUD Operations
@@ -29,23 +166,22 @@ Accept: application/json
 
 ###
 
-### POST Create New Post
-# Creates a new post
-# Required fields: title, content
-# Optional field: authorId
+### POST Create New Post (Authenticated)
+# Creates a new post - Requires authentication
+# AuthorId is automatically set from JWT token
 POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
     "title": "My First Blog Post",
-    "content": "This is the content of my first blog post. It contains valuable information.",
-    "authorId": 1
+    "content": "This is the content of my first blog post. It contains valuable information."
 }
 
 ###
 
-### POST Create Post - Minimal Data
-# Creates a post with only required fields
+### POST Create Post - Unauthenticated Test
+# Should return 401 Unauthorized
 POST {{Bloggit.API_HostAddress}}/api/v1/Post
 Content-Type: application/json
 
@@ -87,10 +223,11 @@ Content-Type: application/json
 
 ###
 
-### PUT Update Post
-# Updates an existing post
+### PUT Update Post (As Author)
+# Updates an existing post - Only author can update
 # Replace @postId with actual post ID
 PUT {{Bloggit.API_HostAddress}}/api/v1/Post/{{postId}}
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
@@ -134,10 +271,11 @@ Content-Type: application/json
 
 ###
 
-### DELETE Post
-# Deletes a post by ID
+### DELETE Post (As Author or Admin)
+# Deletes a post by ID - Author or Admin role required
 # Replace @postId with actual post ID
 DELETE {{Bloggit.API_HostAddress}}/api/v1/Post/{{postId}}
+Authorization: Bearer {{accessToken}}
 
 ###
 
@@ -215,10 +353,157 @@ Content-Type: application/json
 ### Bulk Create - Create Multiple Posts
 # Run this multiple times to populate database for testing
 POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
     "title": "Bulk Test Post {{$randomInt}}",
-    "content": "Generated at {{$datetime iso8601}}",
-    "authorId": {{$randomInt}}
+    "content": "Generated at {{$datetime iso8601}}"
 }
+
+###############################################################################
+# Security Testing - XSS Prevention
+###############################################################################
+
+### Test XSS Prevention - Script Tag in Title
+# Sanitization should remove <script> tags
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "title": "Malicious Title <script>alert('XSS')</script>",
+    "content": "Safe content"
+}
+
+###
+
+### Test XSS Prevention - Script Tag in Content
+# Script tags should be sanitized
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "title": "Test XSS in Content",
+    "content": "This content has <script>alert('XSS Attack!')</script> malicious code"
+}
+
+###
+
+### Test XSS Prevention - Event Handlers
+# Event handlers should be removed
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "title": "Event Handler Test",
+    "content": "<div onclick='maliciousCode()'>Click me</div><img src=x onerror='alert(1)'>"
+}
+
+###
+
+### Test XSS Prevention - Iframe Injection
+# Iframes should be removed
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "title": "Iframe Test",
+    "content": "Content with <iframe src='http://evil.com'></iframe> injection"
+}
+
+###
+
+### Test Allowed HTML Tags
+# Safe HTML tags should be preserved
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "title": "Safe HTML Test",
+    "content": "<p>Paragraph</p><strong>Bold</strong><em>Italic</em><br><h1>Heading</h1><ul><li>List item</li></ul><a href='https://example.com'>Link</a>"
+}
+
+###
+
+###############################################################################
+# Authorization Testing - Role-Based Access
+###############################################################################
+
+### Test Update Post - Unauthorized User
+# Create a second user and try to update first user's post
+# Should return 403 Forbidden
+PUT {{Bloggit.API_HostAddress}}/api/v1/Post/{{postId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+    "title": "Trying to update someone else's post",
+    "content": "This should fail"
+}
+
+###
+
+### Test Delete Post - Non-Author, Non-Admin
+# Should return 403 Forbidden
+DELETE {{Bloggit.API_HostAddress}}/api/v1/Post/{{postId}}
+Authorization: Bearer {{accessToken}}
+
+###
+
+### Test Access Without Token
+# Should return 401 Unauthorized
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Content-Type: application/json
+
+{
+    "title": "No auth test",
+    "content": "This should be rejected"
+}
+
+###
+
+### Test with Invalid/Expired Token
+# Should return 401 Unauthorized
+POST {{Bloggit.API_HostAddress}}/api/v1/Post
+Authorization: Bearer invalid.token.here
+Content-Type: application/json
+
+{
+    "title": "Invalid token test",
+    "content": "This should be rejected"
+}
+
+###############################################################################
+# Complete Workflow Test Scenario
+###############################################################################
+
+### Workflow: Register -> Login -> Create Post -> Update -> Delete
+
+# Step 1: Register
+POST {{Bloggit.API_HostAddress}}/api/v1/Auth/register
+Content-Type: application/json
+
+{
+    "username": "workflowuser",
+    "email": "workflow@example.com",
+    "password": "Workflow@123",
+    "firstName": "Workflow",
+    "lastName": "Test"
+}
+
+# Step 2: Login and copy token to @accessToken
+# POST {{Bloggit.API_HostAddress}}/api/v1/Auth/login
+
+# Step 3: Create a post (use token from step 2)
+# POST {{Bloggit.API_HostAddress}}/api/v1/Post with Authorization header
+
+# Step 4: Update the post (copy ID from step 3)
+# PUT {{Bloggit.API_HostAddress}}/api/v1/Post/{id} with Authorization header
+
+# Step 5: Delete the post
+# DELETE {{Bloggit.API_HostAddress}}/api/v1/Post/{id} with Authorization header

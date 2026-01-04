@@ -30,4 +30,11 @@ public class UserRepository(ApplicationDbContext context) : IUserRepository
             return false;
         }
     }
+
+    public async Task<IEnumerable<ApplicationUser>> GetAllUsersAsync()
+    {
+        return await _context.Users
+            .OrderBy(u => u.UserName)
+            .ToListAsync();
+    }
 }

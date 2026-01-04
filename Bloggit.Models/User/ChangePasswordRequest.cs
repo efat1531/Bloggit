@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Bloggit.API.DTOs;
+namespace Bloggit.Models.User;
 
-public class ChangePasswordDto
+public class ChangePasswordRequest
 {
     [Required]
     public string CurrentPassword { get; set; } = string.Empty;

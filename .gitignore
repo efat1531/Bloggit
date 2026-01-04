@@ -244,3 +244,7 @@ secrets.json
 *.db-wal
 *.sqlite
 *.sqlite3
+.claude/
+.claude/local_storage/
+.github/
+.vs/

@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Bloggit.API.DTOs;
+namespace Bloggit.Models.User;
 
-public class UpdateUserProfileDto
+public class UpdateUserProfileRequest
 {
     [StringLength(100)]
     public string? FirstName { get; set; }

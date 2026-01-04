@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Bloggit.API.DTOs;
+namespace Bloggit.Models.Auth;
 
-public class LoginDto
+public class LoginRequest
 {
     [Required]
     public string EmailOrUsername { get; set; } = string.Empty;

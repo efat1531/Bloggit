@@ -45,11 +45,24 @@ if (app.Environment.IsDevelopment())
 {
     logger.LogInformation("🔧 Running in Development mode");
     logger.LogInformation("📚 API documentation available at /scalar/v1");
-    app.MapScalarApiReference();
     app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options
+            .WithTitle("Bloggit API Documentation")
+            .WithTheme(ScalarTheme.Default)
+            .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
+            .WithOpenApiRoutePattern("/openapi/{documentName}.json");
+    });
 }
 
 app.UseRequestLogging();
+
+// Add security headers middleware (skip in Development to allow Scalar API docs)
+if (!app.Environment.IsDevelopment())
+{
+    app.UseSecurityHeaders();
+}
 
 app.UseHttpsRedirection();
 

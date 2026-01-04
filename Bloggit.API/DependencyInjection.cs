@@ -102,8 +102,27 @@ namespace Bloggit.API
                 };
             });
 
-            // Add Authorization
-            services.AddAuthorization();
+            // Add Authorization with Policies
+            services.AddAuthorization(options =>
+            {
+                // Policy for Admin role only
+                options.AddPolicy("AdminOnly", policy =>
+                    policy.RequireRole("Admin"));
+
+                // Policy for SuperAdmin only (users with SuperAdmin claim)
+                options.AddPolicy("SuperAdminOnly", policy =>
+                    policy.RequireClaim("SuperAdmin", "true"));
+
+                // Policy for Admin or Post Author
+                options.AddPolicy("AdminOrAuthor", policy =>
+                    policy.RequireAssertion(context =>
+                        context.User.IsInRole("Admin") ||
+                        context.User.HasClaim(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)));
+
+                // Policy for authenticated users
+                options.AddPolicy("AuthenticatedUser", policy =>
+                    policy.RequireAuthenticatedUser());
+            });
 
             // Register Repositories
             services.AddScoped<IPostRepository, PostRepository>();
@@ -113,6 +132,7 @@ namespace Bloggit.API
             services.AddScoped<IPostService, PostService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IEmailService, EmailService>();
+            services.AddScoped<IInputSanitizationService, InputSanitizationService>();
 
             return services;
         }
@@ -137,8 +157,25 @@ namespace Bloggit.API
                 options.ApiVersionReader = new UrlSegmentApiVersionReader();
             }).AddMvc();
 
-            // Add OpenAPI
-            services.AddOpenApi();
+            // Add OpenAPI with proper configuration
+            services.AddOpenApi(options =>
+            {
+                options.AddDocumentTransformer((document, context, cancellationToken) =>
+                {
+                    document.Info = new()
+                    {
+                        Title = "Bloggit API",
+                        Version = "v1",
+                        Description = "A RESTful API for the Bloggit blog application with authentication, authorization, and CRUD operations.",
+                        Contact = new()
+                        {
+                            Name = "Bloggit Support",
+                            Email = "support@bloggit.com"
+                        }
+                    };
+                    return Task.CompletedTask;
+                });
+            });
 
             return services;
         }

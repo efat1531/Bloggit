@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Bloggit.API.DTOs;
+namespace Bloggit.Models.User;
 
-public class RegisterDto
+public class RegisterRequest
 {
     [Required]
     [EmailAddress]
