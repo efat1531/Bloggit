@@ -16,27 +16,43 @@ public class InputSanitizationService : IInputSanitizationService
     {
         _sanitizer = new HtmlSanitizer();
 
-        // Configure allowed tags and attributes for rich text content
-        // Remove all potentially dangerous tags
+        // Configure allowed tags for rich text content
+        // This is an EXPLICIT ALLOWLIST - only these tags are permitted, all others are removed
         _sanitizer.AllowedTags.Clear();
-        _sanitizer.AllowedTags.Add("p");
-        _sanitizer.AllowedTags.Add("br");
-        _sanitizer.AllowedTags.Add("strong");
-        _sanitizer.AllowedTags.Add("em");
-        _sanitizer.AllowedTags.Add("u");
+        
+        // Text formatting and semantic tags
+        _sanitizer.AllowedTags.Add("p");        // Paragraphs
+        _sanitizer.AllowedTags.Add("br");       // Line breaks
+        _sanitizer.AllowedTags.Add("div");      // Generic containers (safe when attributes are sanitized)
+        _sanitizer.AllowedTags.Add("strong");   // Bold/important text
+        _sanitizer.AllowedTags.Add("em");       // Italic/emphasized text
+        _sanitizer.AllowedTags.Add("u");        // Underlined text
+        
+        // Headings
         _sanitizer.AllowedTags.Add("h1");
         _sanitizer.AllowedTags.Add("h2");
         _sanitizer.AllowedTags.Add("h3");
         _sanitizer.AllowedTags.Add("h4");
         _sanitizer.AllowedTags.Add("h5");
         _sanitizer.AllowedTags.Add("h6");
-        _sanitizer.AllowedTags.Add("ul");
-        _sanitizer.AllowedTags.Add("ol");
-        _sanitizer.AllowedTags.Add("li");
-        _sanitizer.AllowedTags.Add("a");
-        _sanitizer.AllowedTags.Add("blockquote");
-        _sanitizer.AllowedTags.Add("code");
-        _sanitizer.AllowedTags.Add("pre");
+        
+        // Lists
+        _sanitizer.AllowedTags.Add("ul");       // Unordered lists
+        _sanitizer.AllowedTags.Add("ol");       // Ordered lists
+        _sanitizer.AllowedTags.Add("li");       // List items
+        
+        // Other content
+        _sanitizer.AllowedTags.Add("a");        // Links (href sanitized below)
+        _sanitizer.AllowedTags.Add("blockquote"); // Quotations
+        _sanitizer.AllowedTags.Add("code");     // Inline code
+        _sanitizer.AllowedTags.Add("pre");      // Preformatted text/code blocks
+        
+        // DISALLOWED tags (removed by sanitizer):
+        // - script, style, iframe, object, embed: Executable content
+        // - form, input, button, select, textarea: Form elements
+        // - img, video, audio: Media (can be added later if needed with proper src validation)
+        // - meta, link, base: Document metadata
+        // - Any other HTML tags not explicitly listed above
 
         // Configure allowed attributes
         _sanitizer.AllowedAttributes.Clear();
