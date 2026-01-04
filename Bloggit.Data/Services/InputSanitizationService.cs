@@ -79,6 +79,10 @@ public class InputSanitizationService : IInputSanitizationService
         return _sanitizer.Sanitize(input);
     }
 
+    /// <summary>
+    /// Recursively sanitizes all string properties of an object and its nested objects.
+    /// Handles circular references to prevent infinite loops.
+    /// </summary>
     public T SanitizeObject<T>(T obj) where T : class
     {
         if (obj == null)
@@ -86,18 +90,64 @@ public class InputSanitizationService : IInputSanitizationService
             return obj!;
         }
 
-        var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.PropertyType == typeof(string) && p.CanRead && p.CanWrite);
+        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        SanitizeObjectRecursive(obj, visited);
+        return obj;
+    }
+
+    private void SanitizeObjectRecursive(object obj, HashSet<object> visited)
+    {
+        if (obj == null || !visited.Add(obj))
+        {
+            // Skip null objects or objects we've already visited (circular reference)
+            return;
+        }
+
+        var type = obj.GetType();
+
+        // Skip primitive types and strings (strings are handled directly)
+        if (type.IsPrimitive || type == typeof(string))
+        {
+            return;
+        }
+
+        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.CanRead && p.CanWrite);
 
         foreach (var property in properties)
         {
-            var value = property.GetValue(obj) as string;
-            if (!string.IsNullOrEmpty(value))
+            var value = property.GetValue(obj);
+            if (value == null)
             {
-                property.SetValue(obj, SanitizeInput(value));
+                continue;
+            }
+
+            // Sanitize string properties
+            if (property.PropertyType == typeof(string))
+            {
+                var stringValue = value as string;
+                if (!string.IsNullOrEmpty(stringValue))
+                {
+                    property.SetValue(obj, SanitizeInput(stringValue));
+                }
+            }
+            // Handle collections (arrays, lists, etc.)
+            else if (typeof(System.Collections.IEnumerable).IsAssignableFrom(property.PropertyType) && 
+                     property.PropertyType != typeof(string))
+            {
+                foreach (var item in (System.Collections.IEnumerable)value)
+                {
+                    if (item != null && item.GetType().IsClass && item.GetType() != typeof(string))
+                    {
+                        SanitizeObjectRecursive(item, visited);
+                    }
+                }
+            }
+            // Recursively sanitize nested objects
+            else if (property.PropertyType.IsClass)
+            {
+                SanitizeObjectRecursive(value, visited);
             }
         }
-
-        return obj;
     }
 }

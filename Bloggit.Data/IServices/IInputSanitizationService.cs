@@ -11,7 +11,8 @@ public interface IInputSanitizationService
     string SanitizeInput(string input);
 
     /// <summary>
-    /// Sanitizes all string properties of an object
+    /// Recursively sanitizes all string properties of an object and its nested objects.
+    /// Handles circular references to prevent infinite loops.
     /// </summary>
     T SanitizeObject<T>(T obj) where T : class;
 }
