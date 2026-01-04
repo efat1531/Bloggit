@@ -177,7 +177,7 @@ public class InputSanitizationServiceTests
     }
 
     [Fact]
-    public void SanitizeObject_OnlySanitizesTopLevelStringProperties()
+    public void SanitizeObject_SanitizesNestedObjectsRecursively()
     {
         // Arrange
         var testObject = new NestedTestModel
@@ -186,7 +186,7 @@ public class InputSanitizationServiceTests
             Inner = new TestModel
             {
                 Title = "Title <script>alert(2)</script>",
-                Content = "Content"
+                Content = "Content <iframe src='evil.com'></iframe>"
             }
         };
 
@@ -195,9 +195,83 @@ public class InputSanitizationServiceTests
 
         // Assert
         result.Name.Should().NotContain("<script>");
-        // Note: SanitizeObject only sanitizes direct string properties, not nested objects
-        // For nested objects, you need to call SanitizeObject on each level
-        result.Inner.Title.Should().Contain("<script>"); // Not sanitized at nested level
+        result.Name.Should().Contain("Name");
+        // Nested objects should also be sanitized
+        result.Inner.Title.Should().NotContain("<script>");
+        result.Inner.Title.Should().Contain("Title");
+        result.Inner.Content.Should().NotContain("<iframe");
+        result.Inner.Content.Should().Contain("Content");
+    }
+
+    [Fact]
+    public void SanitizeObject_HandlesCircularReferences()
+    {
+        // Arrange
+        var testObject = new CircularTestModel
+        {
+            Name = "Name <script>alert(1)</script>"
+        };
+        testObject.Self = testObject; // Create circular reference
+
+        // Act
+        var result = _sanitizationService.SanitizeObject(testObject);
+
+        // Assert
+        result.Name.Should().NotContain("<script>");
+        result.Name.Should().Contain("Name");
+        result.Self.Should().BeSameAs(result); // Circular reference preserved
+    }
+
+    [Fact]
+    public void SanitizeObject_SanitizesDeeplyNestedObjects()
+    {
+        // Arrange
+        var testObject = new DeeplyNestedModel
+        {
+            Level1 = "L1 <script>alert(1)</script>",
+            Nested = new NestedTestModel
+            {
+                Name = "L2 <script>alert(2)</script>",
+                Inner = new TestModel
+                {
+                    Title = "L3 <script>alert(3)</script>",
+                    Content = "L3 Content"
+                }
+            }
+        };
+
+        // Act
+        var result = _sanitizationService.SanitizeObject(testObject);
+
+        // Assert
+        result.Level1.Should().NotContain("<script>");
+        result.Nested.Name.Should().NotContain("<script>");
+        result.Nested.Inner.Title.Should().NotContain("<script>");
+    }
+
+    [Fact]
+    public void SanitizeObject_SanitizesCollections()
+    {
+        // Arrange
+        var testObject = new CollectionTestModel
+        {
+            Name = "Parent <script>alert(0)</script>",
+            Items = new List<TestModel>
+            {
+                new TestModel { Title = "Item1 <script>alert(1)</script>", Content = "Content1" },
+                new TestModel { Title = "Item2 <iframe src='evil.com'></iframe>", Content = "Content2" }
+            }
+        };
+
+        // Act
+        var result = _sanitizationService.SanitizeObject(testObject);
+
+        // Assert
+        result.Name.Should().NotContain("<script>");
+        result.Items[0].Title.Should().NotContain("<script>");
+        result.Items[0].Title.Should().Contain("Item1");
+        result.Items[1].Title.Should().NotContain("<iframe");
+        result.Items[1].Title.Should().Contain("Item2");
     }
 
     [Fact]
@@ -319,5 +393,23 @@ public class InputSanitizationServiceTests
     {
         public string Name { get; set; } = string.Empty;
         public TestModel Inner { get; set; } = new();
+    }
+
+    private class CircularTestModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public CircularTestModel? Self { get; set; }
+    }
+
+    private class DeeplyNestedModel
+    {
+        public string Level1 { get; set; } = string.Empty;
+        public NestedTestModel Nested { get; set; } = new();
+    }
+
+    private class CollectionTestModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public List<TestModel> Items { get; set; } = new();
     }
 }
