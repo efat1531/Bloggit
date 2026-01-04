@@ -1,5 +1,6 @@
 ﻿using Asp.Versioning;
 using AutoMapper;
+using Bloggit.API.Authorization;
 using Bloggit.Business.IRepository;
 using Bloggit.Data.IServices;
 using Bloggit.Data.Models;
@@ -17,12 +18,14 @@ namespace Bloggit.API.Controller
         IPostRepository postRepository,
         IMapper mapper,
         ILogger<PostController> logger,
-        IInputSanitizationService inputSanitizationService) : ControllerBase
+        IInputSanitizationService inputSanitizationService,
+        IAuthorizationService authorizationService) : ControllerBase
     {
         private readonly IPostRepository _postRepository = postRepository;
         private readonly IMapper _mapper = mapper;
         private readonly ILogger<PostController> _logger = logger;
         private readonly IInputSanitizationService _inputSanitizationService = inputSanitizationService;
+        private readonly IAuthorizationService _authorizationService = authorizationService;
             
         /// <summary>
         /// Get all posts
@@ -113,11 +116,15 @@ namespace Bloggit.API.Controller
                     return NotFound(CreateNotFoundMessage(id));
                 }
 
-                // Check if the current user is the author (only author can edit)
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (existingPost.AuthorId != userId)
+                // Use resource-based authorization to check if user can update this post
+                var authorizationResult = await _authorizationService.AuthorizeAsync(
+                    User, existingPost, new[] { new ResourceOwnershipRequirement() });
+
+                if (!authorizationResult.Succeeded)
                 {
-                    _logger.LogWarning("User {UserId} attempted to update post {PostId} owned by {AuthorId}", userId, id, existingPost.AuthorId);
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    _logger.LogWarning("User {UserId} attempted to update post {PostId} owned by {AuthorId}", 
+                        userId, id, existingPost.AuthorId);
                     return Forbid();
                 }
 
@@ -133,7 +140,8 @@ namespace Bloggit.API.Controller
                     return StatusCode(500, "Failed to update post");
                 }
 
-                _logger.LogInformation("Post {PostId} updated by user {UserId}", id, userId);
+                var userId2 = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                _logger.LogInformation("Post {PostId} updated by user {UserId}", id, userId2);
                 return NoContent();
             }
             catch (Exception ex)
@@ -162,14 +170,15 @@ namespace Bloggit.API.Controller
                     return NotFound(CreateNotFoundMessage(id));
                 }
 
-                // Check if the current user is the author OR an Admin
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var isAdmin = User.IsInRole("Admin");
-                var isAuthor = existingPost.AuthorId == userId;
+                // Use resource-based authorization to check if user can delete this post
+                var authorizationResult = await _authorizationService.AuthorizeAsync(
+                    User, existingPost, new[] { new ResourceOwnershipRequirement() });
 
-                if (!isAdmin && !isAuthor)
+                if (!authorizationResult.Succeeded)
                 {
-                    _logger.LogWarning("User {UserId} attempted to delete post {PostId} owned by {AuthorId}", userId, id, existingPost.AuthorId);
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    _logger.LogWarning("User {UserId} attempted to delete post {PostId} owned by {AuthorId}", 
+                        userId, id, existingPost.AuthorId);
                     return Forbid();
                 }
 
@@ -181,8 +190,10 @@ namespace Bloggit.API.Controller
                     return StatusCode(500, "Failed to delete post");
                 }
 
+                var userId2 = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var isAdmin = User.IsInRole("Admin");
                 var deletedBy = isAdmin ? "Admin" : "Author";
-                _logger.LogInformation("Post {PostId} deleted by {Role} user {UserId}", id, deletedBy, userId);
+                _logger.LogInformation("Post {PostId} deleted by {Role} user {UserId}", id, deletedBy, userId2);
                 return NoContent();
             }
             catch (Exception ex)
