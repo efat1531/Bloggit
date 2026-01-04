@@ -118,7 +118,7 @@ namespace Bloggit.API.Controller
 
                 // Use resource-based authorization to check if user can update this post
                 var authorizationResult = await _authorizationService.AuthorizeAsync(
-                    User, existingPost, new ResourceOwnershipRequirement());
+                    User, existingPost, new[] { new ResourceOwnershipRequirement() });
 
                 if (!authorizationResult.Succeeded)
                 {
@@ -172,7 +172,7 @@ namespace Bloggit.API.Controller
 
                 // Use resource-based authorization to check if user can delete this post
                 var authorizationResult = await _authorizationService.AuthorizeAsync(
-                    User, existingPost, new ResourceOwnershipRequirement());
+                    User, existingPost, new[] { new ResourceOwnershipRequirement() });
 
                 if (!authorizationResult.Succeeded)
                 {
