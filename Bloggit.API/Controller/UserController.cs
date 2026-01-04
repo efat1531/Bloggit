@@ -34,25 +34,33 @@ public class UserController(
     {
         _logger.LogInformation("Fetching users with role filter: {Role}", role ?? "All");
 
-        var users = await _userRepository.GetAllUsersAsync();
         var usersWithRoles = new List<UserWithRolesResponse>();
 
-        foreach (var user in users)
+        // Optimized path when a role filter is specified: avoid per-user GetRolesAsync
+        if (!string.IsNullOrWhiteSpace(role))
         {
-            var userRoles = await _userManager.GetRolesAsync(user);
+            var usersInRole = await _userManager.GetUsersInRoleAsync(role);
 
-            // Apply role filter if specified
-            if (!string.IsNullOrEmpty(role))
+            foreach (var user in usersInRole)
             {
-                if (!userRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
-                {
-                    continue; // Skip users that don't have the specified role
-                }
+                var userDto = _mapper.Map<UserWithRolesResponse>(user);
+                // We already know the user is in the requested role; avoid extra role lookups.
+                userDto.Roles = new List<string> { role };
+                usersWithRoles.Add(userDto);
             }
+        }
+        else
+        {
+            var users = await _userRepository.GetAllUsersAsync();
 
-            var userDto = _mapper.Map<UserWithRolesResponse>(user);
-            userDto.Roles = userRoles;
-            usersWithRoles.Add(userDto);
+            foreach (var user in users)
+            {
+                var userRoles = await _userManager.GetRolesAsync(user);
+
+                var userDto = _mapper.Map<UserWithRolesResponse>(user);
+                userDto.Roles = userRoles;
+                usersWithRoles.Add(userDto);
+            }
         }
 
         _logger.LogInformation("Found {Count} users matching filter: {Role}", usersWithRoles.Count, role ?? "All");
