@@ -121,7 +121,7 @@ public class InputSanitizationService : IInputSanitizationService
             {
                 foreach (var item in (System.Collections.IEnumerable)value)
                 {
-                    if (item != null && item.GetType().IsClass)
+                    if (item != null && item.GetType().IsClass && item.GetType() != typeof(string))
                     {
                         SanitizeObjectRecursive(item, visited);
                     }
