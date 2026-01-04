@@ -123,6 +123,7 @@ namespace Bloggit.API.Controller
 
                 // Map updates (null values are ignored)
                 _mapper.Map(request, existingPost);
+                existingPost.UpdatedAt = System.DateTime.UtcNow;
 
                 var success = await _postRepository.UpdatePostAsync(existingPost);
 
