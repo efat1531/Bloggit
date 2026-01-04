@@ -179,7 +179,24 @@ public class UserController(
         var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
         if (!isAdmin)
         {
-            await _userManager.AddToRoleAsync(user, "Admin");
+            var addToRoleResult = await _userManager.AddToRoleAsync(user, "Admin");
+            if (!addToRoleResult.Succeeded)
+            {
+                _logger.LogError("Failed to add user {UserId} to Admin role after assigning SuperAdmin claim: {Errors}", request.UserId, string.Join(", ", addToRoleResult.Errors.Select(e => e.Description)));
+
+                // Attempt to roll back the SuperAdmin claim to avoid inconsistent authorization state
+                var rollbackResult = await _userManager.RemoveClaimAsync(user, new Claim("SuperAdmin", "true"));
+                if (!rollbackResult.Succeeded)
+                {
+                    _logger.LogError("Failed to roll back SuperAdmin claim for user {UserId}: {Errors}", request.UserId, string.Join(", ", rollbackResult.Errors.Select(e => e.Description)));
+                }
+
+                return StatusCode(500, new
+                {
+                    message = "Failed to ensure Admin role while assigning SuperAdmin privileges",
+                    errors = addToRoleResult.Errors.Select(e => e.Description)
+                });
+            }
         }
 
         _logger.LogInformation("SuperAdmin claim assigned to user {UserId} successfully", request.UserId);
