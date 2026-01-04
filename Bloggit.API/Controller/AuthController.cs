@@ -44,11 +44,10 @@ public class AuthController(
     [HttpPost("register")]
     public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest registerDto)
     {
-        _logger.LogInformation("Registration attempt for email: {Email}", registerDto.Email);
-
         // Sanitize input to prevent XSS attacks
         _inputSanitizationService.SanitizeObject(registerDto);
 
+        _logger.LogInformation("Registration attempt for email: {Email}", registerDto.Email);
         // Check if user already exists
         var existingUser = await _userManager.FindByEmailAsync(registerDto.Email);
         if (existingUser != null)
