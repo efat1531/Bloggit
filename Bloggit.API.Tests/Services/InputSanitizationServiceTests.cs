@@ -40,6 +40,9 @@ public class InputSanitizationServiceTests
         // Assert
         result.Should().NotContain("onclick");
         result.Should().NotContain("alert");
+        result.Should().Contain("<div>");
+        result.Should().Contain("Click me");
+        result.Should().Contain("</div>");
     }
 
     [Fact]
@@ -234,16 +237,37 @@ public class InputSanitizationServiceTests
     public void SanitizeInput_WithDisallowedTags_RemovesEntireTag()
     {
         // Arrange
-        var input = "<div data-value='safe' onclick='unsafe()'>Content</div>";
+        var input = "<section data-value='safe' onclick='unsafe()'>Content</section>";
 
         // Act
         var result = _sanitizationService.SanitizeInput(input);
 
         // Assert
-        // div is not in the allowed tags list, so entire tag and content are removed
+        // section is not in the allowed tags list, so entire tag is removed
         result.Should().NotContain("onclick");
-        result.Should().NotContain("div");
+        result.Should().NotContain("section");
+        result.Should().NotContain("data-value");
         // Content inside disallowed tags may be removed depending on sanitizer behavior
+    }
+
+    [Fact]
+    public void SanitizeInput_WithDivTag_PreservesDivButRemovesDangerousAttributes()
+    {
+        // Arrange
+        var input = "<div onclick='alert(123)' class='danger'>Safe Content</div>";
+
+        // Act
+        var result = _sanitizationService.SanitizeInput(input);
+
+        // Assert
+        // div is in the allowed tags list, so tag is preserved
+        result.Should().Contain("<div>");
+        result.Should().Contain("Safe Content");
+        result.Should().Contain("</div>");
+        // But dangerous attributes are removed
+        result.Should().NotContain("onclick");
+        result.Should().NotContain("alert");
+        result.Should().NotContain("class"); // class is not in allowed attributes
     }
 
     [Fact]
