@@ -8,7 +8,9 @@ using Bloggit.Data.Services;
 using Microsoft.EntityFrameworkCore;
 using Asp.Versioning;
 using Bloggit.API.Mappings;
+using Bloggit.API.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -113,16 +115,13 @@ namespace Bloggit.API
                 options.AddPolicy("SuperAdminOnly", policy =>
                     policy.RequireClaim("SuperAdmin", "true"));
 
-                // Policy for Admin or Post Author
-                options.AddPolicy("AdminOrAuthor", policy =>
-                    policy.RequireAssertion(context =>
-                        context.User.IsInRole("Admin") ||
-                        context.User.HasClaim(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)));
-
                 // Policy for authenticated users
                 options.AddPolicy("AuthenticatedUser", policy =>
                     policy.RequireAuthenticatedUser());
             });
+
+            // Register authorization handlers
+            services.AddScoped<IAuthorizationHandler, PostOwnershipAuthorizationHandler>();
 
             // Register Repositories
             services.AddScoped<IPostRepository, PostRepository>();

@@ -1,10 +1,12 @@
 using AutoMapper;
+using Bloggit.API.Authorization;
 using Bloggit.API.Controller;
 using Bloggit.Business.IRepository;
 using Bloggit.Data.IServices;
 using Bloggit.Data.Models;
 using Bloggit.Models.Post;
 using FluentAssertions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -19,6 +21,7 @@ public class PostControllerTests
     private readonly Mock<IMapper> _mockMapper;
     private readonly Mock<ILogger<PostController>> _mockLogger;
     private readonly Mock<IInputSanitizationService> _mockSanitizationService;
+    private readonly Mock<IAuthorizationService> _mockAuthorizationService;
     private readonly PostController _controller;
     private const string TestUserId = "test-user-id-123";
     private const string AdminUserId = "admin-user-id-456";
@@ -29,12 +32,14 @@ public class PostControllerTests
         _mockMapper = new Mock<IMapper>();
         _mockLogger = new Mock<ILogger<PostController>>();
         _mockSanitizationService = new Mock<IInputSanitizationService>();
+        _mockAuthorizationService = new Mock<IAuthorizationService>();
 
         _controller = new PostController(
             _mockPostRepository.Object,
             _mockMapper.Object,
             _mockLogger.Object,
-            _mockSanitizationService.Object
+            _mockSanitizationService.Object,
+            _mockAuthorizationService.Object
         );
 
         // Setup default HttpContext
@@ -234,6 +239,14 @@ public class PostControllerTests
         _mockPostRepository.Setup(x => x.GetPostByIdAsync(1)).ReturnsAsync(existingPost);
         _mockMapper.Setup(x => x.Map(updateRequest, existingPost)).Returns(existingPost);
         _mockPostRepository.Setup(x => x.UpdatePostAsync(existingPost)).ReturnsAsync(true);
+        
+        // Mock authorization service to succeed (user is author)
+        _mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(), 
+                It.IsAny<Post>(), 
+                It.IsAny<IEnumerable<IAuthorizationRequirement>>()))
+            .ReturnsAsync(AuthorizationResult.Success());
 
         // Act
         var result = await _controller.Update(1, updateRequest);
@@ -264,6 +277,14 @@ public class PostControllerTests
 
         _mockSanitizationService.Setup(x => x.SanitizeObject(updateRequest)).Returns(updateRequest);
         _mockPostRepository.Setup(x => x.GetPostByIdAsync(1)).ReturnsAsync(existingPost);
+        
+        // Mock authorization service to fail (user is not author or admin)
+        _mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(), 
+                It.IsAny<Post>(), 
+                It.IsAny<IEnumerable<IAuthorizationRequirement>>()))
+            .ReturnsAsync(AuthorizationResult.Failed());
 
         // Act
         var result = await _controller.Update(1, updateRequest);
@@ -305,6 +326,14 @@ public class PostControllerTests
 
         _mockPostRepository.Setup(x => x.GetPostByIdAsync(1)).ReturnsAsync(existingPost);
         _mockPostRepository.Setup(x => x.DeletePostAsync(1)).ReturnsAsync(true);
+        
+        // Mock authorization service to succeed (user is author)
+        _mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(), 
+                It.IsAny<Post>(), 
+                It.IsAny<IEnumerable<IAuthorizationRequirement>>()))
+            .ReturnsAsync(AuthorizationResult.Success());
 
         // Act
         var result = await _controller.Delete(1);
@@ -329,6 +358,14 @@ public class PostControllerTests
 
         _mockPostRepository.Setup(x => x.GetPostByIdAsync(1)).ReturnsAsync(existingPost);
         _mockPostRepository.Setup(x => x.DeletePostAsync(1)).ReturnsAsync(true);
+        
+        // Mock authorization service to succeed (user is admin)
+        _mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(), 
+                It.IsAny<Post>(), 
+                It.IsAny<IEnumerable<IAuthorizationRequirement>>()))
+            .ReturnsAsync(AuthorizationResult.Success());
 
         // Act
         var result = await _controller.Delete(1);
@@ -352,6 +389,14 @@ public class PostControllerTests
         };
 
         _mockPostRepository.Setup(x => x.GetPostByIdAsync(1)).ReturnsAsync(existingPost);
+        
+        // Mock authorization service to fail (user is not author or admin)
+        _mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(), 
+                It.IsAny<Post>(), 
+                It.IsAny<IEnumerable<IAuthorizationRequirement>>()))
+            .ReturnsAsync(AuthorizationResult.Failed());
 
         // Act
         var result = await _controller.Delete(1);
@@ -445,6 +490,14 @@ public class PostControllerTests
         _mockPostRepository.Setup(x => x.GetPostByIdAsync(1)).ReturnsAsync(existingPost);
         _mockMapper.Setup(x => x.Map(updateRequest, existingPost)).Returns(existingPost);
         _mockPostRepository.Setup(x => x.UpdatePostAsync(existingPost)).ReturnsAsync(false);
+        
+        // Mock authorization service to succeed
+        _mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(), 
+                It.IsAny<Post>(), 
+                It.IsAny<IEnumerable<IAuthorizationRequirement>>()))
+            .ReturnsAsync(AuthorizationResult.Success());
 
         // Act
         var result = await _controller.Update(1, updateRequest);
@@ -464,6 +517,14 @@ public class PostControllerTests
 
         _mockPostRepository.Setup(x => x.GetPostByIdAsync(1)).ReturnsAsync(existingPost);
         _mockPostRepository.Setup(x => x.DeletePostAsync(1)).ReturnsAsync(false);
+        
+        // Mock authorization service to succeed
+        _mockAuthorizationService
+            .Setup(x => x.AuthorizeAsync(
+                It.IsAny<ClaimsPrincipal>(), 
+                It.IsAny<Post>(), 
+                It.IsAny<IEnumerable<IAuthorizationRequirement>>()))
+            .ReturnsAsync(AuthorizationResult.Success());
 
         // Act
         var result = await _controller.Delete(1);
