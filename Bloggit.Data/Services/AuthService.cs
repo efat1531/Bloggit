@@ -18,7 +18,7 @@ public class AuthService : IAuthService
         _jwtSettings = jwtSettings.Value;
     }
 
-    public string GenerateJwtToken(ApplicationUser user, IList<string> roles)
+    public string GenerateJwtToken(ApplicationUser user, IList<string> roles, IList<Claim>? userClaims = null)
     {
         var claims = new List<Claim>
         {
@@ -35,6 +35,12 @@ public class AuthService : IAuthService
         foreach (var role in roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
+        // Add user-specific claims (like SuperAdmin)
+        if (userClaims != null)
+        {
+            claims.AddRange(userClaims);
         }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));

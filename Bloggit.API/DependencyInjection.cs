@@ -8,7 +8,9 @@ using Bloggit.Data.Services;
 using Microsoft.EntityFrameworkCore;
 using Asp.Versioning;
 using Bloggit.API.Mappings;
+using Bloggit.API.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -102,8 +104,24 @@ namespace Bloggit.API
                 };
             });
 
-            // Add Authorization
-            services.AddAuthorization();
+            // Add Authorization with Policies
+            services.AddAuthorization(options =>
+            {
+                // Policy for Admin role only
+                options.AddPolicy("AdminOnly", policy =>
+                    policy.RequireRole("Admin"));
+
+                // Policy for SuperAdmin only (users with SuperAdmin claim)
+                options.AddPolicy("SuperAdminOnly", policy =>
+                    policy.RequireClaim("SuperAdmin", "true"));
+
+                // Policy for authenticated users
+                options.AddPolicy("AuthenticatedUser", policy =>
+                    policy.RequireAuthenticatedUser());
+            });
+
+            // Register authorization handlers
+            services.AddScoped<IAuthorizationHandler, PostOwnershipAuthorizationHandler>();
 
             // Register Repositories
             services.AddScoped<IPostRepository, PostRepository>();
@@ -113,6 +131,7 @@ namespace Bloggit.API
             services.AddScoped<IPostService, PostService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IEmailService, EmailService>();
+            services.AddScoped<IInputSanitizationService, InputSanitizationService>();
 
             return services;
         }
@@ -137,8 +156,25 @@ namespace Bloggit.API
                 options.ApiVersionReader = new UrlSegmentApiVersionReader();
             }).AddMvc();
 
-            // Add OpenAPI
-            services.AddOpenApi();
+            // Add OpenAPI with proper configuration
+            services.AddOpenApi(options =>
+            {
+                options.AddDocumentTransformer((document, context, cancellationToken) =>
+                {
+                    document.Info = new()
+                    {
+                        Title = "Bloggit API",
+                        Version = "v1",
+                        Description = "A RESTful API for the Bloggit blog application with authentication, authorization, and CRUD operations.",
+                        Contact = new()
+                        {
+                            Name = "Bloggit Support",
+                            Email = "support@bloggit.com"
+                        }
+                    };
+                    return Task.CompletedTask;
+                });
+            });
 
             return services;
         }

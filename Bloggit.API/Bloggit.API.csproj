@@ -26,6 +26,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Bloggit.Business\Bloggit.Business.csproj" />
     <ProjectReference Include="..\Bloggit.Data\Bloggit.Data.csproj" />
+    <ProjectReference Include="..\Bloggit.Models\Bloggit.Models.csproj" />
   </ItemGroup>
 
 </Project>

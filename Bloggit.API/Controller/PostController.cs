@@ -1,8 +1,10 @@
 ﻿using Asp.Versioning;
 using AutoMapper;
-using Bloggit.API.DTOs;
+using Bloggit.API.Authorization;
 using Bloggit.Business.IRepository;
+using Bloggit.Data.IServices;
 using Bloggit.Data.Models;
+using Bloggit.Models.Post;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -12,11 +14,18 @@ namespace Bloggit.API.Controller
     [ApiVersion(1.0)]
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
-    public class PostController(IPostRepository postRepository, IMapper mapper, ILogger<PostController> logger) : ControllerBase
+    public class PostController(
+        IPostRepository postRepository,
+        IMapper mapper,
+        ILogger<PostController> logger,
+        IInputSanitizationService inputSanitizationService,
+        IAuthorizationService authorizationService) : ControllerBase
     {
         private readonly IPostRepository _postRepository = postRepository;
         private readonly IMapper _mapper = mapper;
         private readonly ILogger<PostController> _logger = logger;
+        private readonly IInputSanitizationService _inputSanitizationService = inputSanitizationService;
+        private readonly IAuthorizationService _authorizationService = authorizationService;
             
         /// <summary>
         /// Get all posts
@@ -27,8 +36,8 @@ namespace Bloggit.API.Controller
             try
             {
                 var posts = await _postRepository.GetPostsAsync();
-                var postDtos = _mapper.Map<List<PostDto>>(posts);
-                return Ok(postDtos);
+                var postResponses = _mapper.Map<List<PostResponse>>(posts);
+                return Ok(postResponses);
             }
             catch (Exception ex)
             {
@@ -42,9 +51,8 @@ namespace Bloggit.API.Controller
         /// </summary>
         [HttpPost]
         [Authorize]
-        public async Task<IActionResult> Create([FromBody] CreatePostDto createPostDto)
+        public async Task<IActionResult> Create([FromBody] CreatePostRequest request)
         {
-
             if (!ModelState.IsValid)
             {
                 _logger.LogWarning("Invalid data for creating post");
@@ -53,9 +61,13 @@ namespace Bloggit.API.Controller
 
             try
             {
-                var post = _mapper.Map<Post>(createPostDto);
+                // Sanitize input to prevent XSS
+                _inputSanitizationService.SanitizeObject(request);
 
-                // Set the AuthorId from the authenticated user's claims
+                // Map to domain model
+                var post = _mapper.Map<Post>(request);
+
+                // Set AuthorId from authenticated user claims
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 post.AuthorId = userId;
 
@@ -63,17 +75,17 @@ namespace Bloggit.API.Controller
 
                 if (!success)
                 {
-                    _logger.LogError("Failed to create post with title: {Title}", createPostDto.Title);
+                    _logger.LogError("Failed to create post with title: {Title}", request.Title);
                     return StatusCode(500, "Failed to create post");
                 }
 
-                var postDto = _mapper.Map<PostDto>(post);
-                _logger.LogInformation("Post created by user {UserId} with title: {Title}", userId, createPostDto.Title);
-                return CreatedAtAction(nameof(GetPostById), new { id = post.Id }, postDto);
+                var response = _mapper.Map<PostResponse>(post);
+                _logger.LogInformation("Post created by user {UserId} with title: {Title}", userId, request.Title);
+                return CreatedAtAction(nameof(GetPostById), new { id = post.Id }, response);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while creating post with title: {Title}", createPostDto.Title);
+                _logger.LogError(ex, "Error occurred while creating post with title: {Title}", request.Title);
                 return StatusCode(500, "An error occurred while creating the post");
             }
         }
@@ -83,9 +95,8 @@ namespace Bloggit.API.Controller
         /// </summary>
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> Update(int id, [FromBody] UpdatePostDto updatePostDto)
+        public async Task<IActionResult> Update(int id, [FromBody] UpdatePostRequest request)
         {
-
             if (!ModelState.IsValid)
             {
                 _logger.LogWarning("Invalid model state for updating post ID: {PostId}", id);
@@ -94,7 +105,9 @@ namespace Bloggit.API.Controller
 
             try
             {
-                // Get posts to find the one to update
+                // Sanitize input
+                _inputSanitizationService.SanitizeObject(request);
+
                 var existingPost = await _postRepository.GetPostByIdAsync(id);
 
                 if (existingPost == null)
@@ -103,16 +116,21 @@ namespace Bloggit.API.Controller
                     return NotFound(CreateNotFoundMessage(id));
                 }
 
-                // Check if the current user is the author of the post
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (existingPost.AuthorId != userId)
+                // Use resource-based authorization to check if user can update this post
+                var authorizationResult = await _authorizationService.AuthorizeAsync(
+                    User, existingPost, new[] { new ResourceOwnershipRequirement() });
+
+                if (!authorizationResult.Succeeded)
                 {
-                    _logger.LogWarning("User {UserId} attempted to update post {PostId} owned by {AuthorId}", userId, id, existingPost.AuthorId);
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    _logger.LogWarning("User {UserId} attempted to update post {PostId} owned by {AuthorId}", 
+                        userId, id, existingPost.AuthorId);
                     return Forbid();
                 }
 
-                // Map the update DTO to the existing post
-                _mapper.Map(updatePostDto, existingPost);
+                // Map updates (null values are ignored)
+                _mapper.Map(request, existingPost);
+                existingPost.UpdatedAt = System.DateTime.UtcNow;
 
                 var success = await _postRepository.UpdatePostAsync(existingPost);
 
@@ -122,7 +140,8 @@ namespace Bloggit.API.Controller
                     return StatusCode(500, "Failed to update post");
                 }
 
-                _logger.LogInformation("Post {PostId} updated by user {UserId}", id, userId);
+                var userId2 = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                _logger.LogInformation("Post {PostId} updated by user {UserId}", id, userId2);
                 return NoContent();
             }
             catch (Exception ex)
@@ -151,11 +170,15 @@ namespace Bloggit.API.Controller
                     return NotFound(CreateNotFoundMessage(id));
                 }
 
-                // Check if the current user is the author of the post
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (existingPost.AuthorId != userId)
+                // Use resource-based authorization to check if user can delete this post
+                var authorizationResult = await _authorizationService.AuthorizeAsync(
+                    User, existingPost, new[] { new ResourceOwnershipRequirement() });
+
+                if (!authorizationResult.Succeeded)
                 {
-                    _logger.LogWarning("User {UserId} attempted to delete post {PostId} owned by {AuthorId}", userId, id, existingPost.AuthorId);
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    _logger.LogWarning("User {UserId} attempted to delete post {PostId} owned by {AuthorId}", 
+                        userId, id, existingPost.AuthorId);
                     return Forbid();
                 }
 
@@ -167,7 +190,10 @@ namespace Bloggit.API.Controller
                     return StatusCode(500, "Failed to delete post");
                 }
 
-                _logger.LogInformation("Post {PostId} deleted by user {UserId}", id, userId);
+                var userId2 = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var isAdmin = User.IsInRole("Admin");
+                var deletedBy = isAdmin ? "Admin" : "Author";
+                _logger.LogInformation("Post {PostId} deleted by {Role} user {UserId}", id, deletedBy, userId2);
                 return NoContent();
             }
             catch (Exception ex)
@@ -192,8 +218,8 @@ namespace Bloggit.API.Controller
                     return NotFound(CreateNotFoundMessage(id));
                 }
 
-                var postDTO = _mapper.Map<PostDto>(post);
-                return Ok(postDTO);
+                var response = _mapper.Map<PostResponse>(post);
+                return Ok(response);
             }
             catch (Exception ex)
             {

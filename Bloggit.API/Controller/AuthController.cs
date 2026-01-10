@@ -1,10 +1,11 @@
 using Asp.Versioning;
 using AutoMapper;
-using Bloggit.API.DTOs;
 using Bloggit.Business.IRepository;
 using Bloggit.Data.Configuration;
 using Bloggit.Data.IServices;
 using Bloggit.Data.Models;
+using Bloggit.Models.Auth;
+using Bloggit.Models.User;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -24,7 +25,8 @@ public class AuthController(
     IUserRepository userRepository,
     IMapper mapper,
     ILogger<AuthController> logger,
-    IOptions<JwtSettings> jwtSettings) : ControllerBase
+    IOptions<JwtSettings> jwtSettings,
+    IInputSanitizationService inputSanitizationService) : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager = userManager;
     private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
@@ -34,15 +36,18 @@ public class AuthController(
     private readonly IMapper _mapper = mapper;
     private readonly ILogger<AuthController> _logger = logger;
     private readonly JwtSettings _jwtSettings = jwtSettings.Value;
+    private readonly IInputSanitizationService _inputSanitizationService = inputSanitizationService;
 
     /// <summary>
     /// Register a new user
     /// </summary>
     [HttpPost("register")]
-    public async Task<IActionResult> RegisterAsync([FromBody] RegisterDto registerDto)
+    public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest registerDto)
     {
-        _logger.LogInformation("Registration attempt for email: {Email}", registerDto.Email);
+        // Sanitize input to prevent XSS attacks
+        _inputSanitizationService.SanitizeObject(registerDto);
 
+        _logger.LogInformation("Registration attempt for email: {Email}", registerDto.Email);
         // Check if user already exists
         var existingUser = await _userManager.FindByEmailAsync(registerDto.Email);
         if (existingUser != null)
@@ -116,7 +121,7 @@ public class AuthController(
     /// Login user
     /// </summary>
     [HttpPost("login")]
-    public async Task<IActionResult> LoginAsync([FromBody] LoginDto loginDto)
+    public async Task<IActionResult> LoginAsync([FromBody] LoginRequest loginDto)
     {
         _logger.LogInformation("Login attempt for: {EmailOrUsername}", loginDto.EmailOrUsername);
 
@@ -153,14 +158,15 @@ public class AuthController(
 
         // Generate JWT token
         var roles = await _userManager.GetRolesAsync(user);
-        var token = _authService.GenerateJwtToken(user, roles);
+        var userClaims = await _userManager.GetClaimsAsync(user);
+        var token = _authService.GenerateJwtToken(user, roles, userClaims);
         var expiresAt = _authService.GetTokenExpiration(_jwtSettings.ExpirationHours);
 
         // Set token in HTTP-only cookie
         SetAuthCookie(token, expiresAt);
 
-        var userDto = _mapper.Map<UserDto>(user);
-        var response = new AuthResponseDto
+        var userDto = _mapper.Map<UserResponse>(user);
+        var response = new AuthResponse
         {
             Token = token,
             User = userDto,
@@ -205,7 +211,7 @@ public class AuthController(
             return NotFound(new { message = "User not found" });
         }
 
-        var userDto = _mapper.Map<UserDto>(user);
+        var userDto = _mapper.Map<UserResponse>(user);
         return Ok(userDto);
     }
 
@@ -214,10 +220,13 @@ public class AuthController(
     /// </summary>
     [HttpPut("profile")]
     [Authorize]
-    public async Task<IActionResult> UpdateProfileAsync([FromBody] UpdateUserProfileDto updateDto)
+    public async Task<IActionResult> UpdateProfileAsync([FromBody] UpdateUserProfileRequest updateDto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         _logger.LogInformation("Updating profile for user {UserId}", userId);
+
+        // Sanitize input to prevent XSS attacks
+        _inputSanitizationService.SanitizeObject(updateDto);
 
         var user = await _userRepository.GetUserByIdAsync(userId!);
         if (user == null)
@@ -236,7 +245,7 @@ public class AuthController(
             return StatusCode(500, new { message = "Failed to update profile" });
         }
 
-        var userDto = _mapper.Map<UserDto>(user);
+        var userDto = _mapper.Map<UserResponse>(user);
         _logger.LogInformation("Profile updated successfully for user {UserId}", userId);
         return Ok(userDto);
     }
@@ -246,7 +255,7 @@ public class AuthController(
     /// </summary>
     [HttpPost("change-password")]
     [Authorize]
-    public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordDto changePasswordDto)
+    public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangePasswordRequest changePasswordDto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         _logger.LogInformation("Password change attempt for user {UserId}", userId);
@@ -302,14 +311,15 @@ public class AuthController(
         }
 
         var roles = await _userManager.GetRolesAsync(user);
-        var newToken = _authService.GenerateJwtToken(user, roles);
+        var userClaims = await _userManager.GetClaimsAsync(user);
+        var newToken = _authService.GenerateJwtToken(user, roles, userClaims);
         var expiresAt = _authService.GetTokenExpiration(_jwtSettings.ExpirationHours);
 
         // Set new token in HTTP-only cookie
         SetAuthCookie(newToken, expiresAt);
 
-        var userDto = _mapper.Map<UserDto>(user);
-        var response = new AuthResponseDto
+        var userDto = _mapper.Map<UserResponse>(user);
+        var response = new AuthResponse
         {
             Token = newToken,
             User = userDto,
